@@ -128,6 +128,13 @@ const createProduct = async (req, res) => {
       .status(201)
       .json({ message: "Product created successfully", newProduct });
   } catch (error) {
+    if (error.code === 11000 && error.keyPattern.modelNumber) {
+      // This error code corresponds to a duplicate key error in MongoDB
+      return res.status(400).json({
+        message:
+          "This model number already exists. Please use a different model number.",
+      });
+    }
     console.error("Error creating product:", error.message);
     res.status(500).json({ error: "Server error" });
   }
