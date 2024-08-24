@@ -26,6 +26,8 @@ const productSchema = new mongoose.Schema(
     },
     modelNumber: { type: String, required: true, unique: true },
     price: { type: String, required: true },
+    offerPrice: { type: String, default: "0" },
+
     discount: String,
     fullDescription: String,
     active: { type: Boolean, default: true },

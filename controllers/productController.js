@@ -61,6 +61,7 @@ const createProduct = async (req, res) => {
       brandimage, // Extract brandImage from the request body
       modelNumber,
       price,
+      offerPrice,
       discount,
       fullDescription,
       active, // Frontend should provide this
@@ -114,6 +115,7 @@ const createProduct = async (req, res) => {
       brandimage, // Include brandImage in the new product
       modelNumber,
       price,
+      offerPrice,
       discount,
       fullDescription,
 
@@ -188,63 +190,12 @@ const updateProduct = async (req, res) => {
       fullDescription,
     } = req.body;
 
-    // Initialize arrays for image URLs and the product thumbnail image URL
-    let imageUrls = [];
-    let productThumbnailImage = null;
-
-    // Fetch the existing product
-    const product = await Product.findOne({ productId });
-    if (!product) {
-      return res.status(404).json({ error: "Product not found" });
+    // Calculate offerPrice if not provided
+    let offerPrice = req.body.offerPrice;
+    if (!offerPrice && price && discount) {
+      offerPrice = (price - (price * discount) / 100).toString();
     }
 
-    // Handle new image uploads if present
-    if (req.files && req.files.images) {
-      // Delete existing images from Cloudinary
-      if (product.images.length > 0) {
-        for (const imageUrl of product.images) {
-          const publicId = imageUrl.split("/").slice(-1)[0].split(".")[0];
-          await cloudinary.uploader.destroy(publicId);
-        }
-      }
-
-      // Upload new images to Cloudinary
-      const files = Array.isArray(req.files.images)
-        ? req.files.images
-        : [req.files.images];
-      for (const file of files) {
-        const imageUrl = await uploadToCloudinary(file.data);
-        imageUrls.push(imageUrl);
-      }
-    } else {
-      // No new images uploaded, keep existing ones
-      imageUrls = product.images;
-    }
-
-    // Handle the thumbnail image
-    if (req.files && req.files.productthumbnailimage) {
-      // Delete existing thumbnail image from Cloudinary
-      if (product.productthumbnailimage) {
-        const publicId = product.productthumbnailimage
-          .split("/")
-          .slice(-1)[0]
-          .split(".")[0];
-        await cloudinary.uploader.destroy(publicId);
-      }
-
-      // Upload new thumbnail image to Cloudinary
-      const thumbnailImageFile = req.files.productthumbnailimage;
-      productThumbnailImage = await uploadToCloudinary(thumbnailImageFile.data);
-    } else {
-      // No new thumbnail image uploaded, keep existing one
-      productThumbnailImage = product.productthumbnailimage;
-    }
-
-    // Split shortDescription and bulletPoints by commas
-    const shortDescriptionArray = shortDescription.split(",");
-    const bulletPointsArray = bulletPoints.split(",");
-
-    // Update product in database
     const updatedProduct = await Product.findOneAndUpdate(
       { productId },
       {
@@ -252,16 +203,17 @@ const updateProduct = async (req, res) => {
         subCategoryName,
         title,
         subSubCategoryName,
-        shortDescription: shortDescriptionArray,
-        bulletPoints: bulletPointsArray,
+        shortDescription: shortDescription.split(","),
+        bulletPoints: bulletPoints.split(","),
         brand,
         brandimage,
         modelNumber,
         price,
+        offerPrice, // Ensure this is passed correctly
         discount,
         fullDescription,
-        images: imageUrls,
-        productthumbnailimage: productThumbnailImage,
+        images: req.body.images || [], // Handle images as well if needed
+        productthumbnailimage: req.body.productthumbnailimage,
       },
       { new: true }
     );
@@ -278,6 +230,7 @@ const updateProduct = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
 // delete function
 
 const deleteProduct = async (req, res) => {
