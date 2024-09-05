@@ -10,6 +10,7 @@ const {
   getProductsByCategory,
   getProductsBysubCategory,
   getProductsByBrand,
+  getProductsBysubsubCategory,
 } = require("../controllers/productController");
 
 const router = express.Router();
@@ -24,6 +25,10 @@ router.get("/brand/:brand", getProductsByBrand);
 router.get(
   "/category/:categoryName/subcategory/:subCategoryName",
   getProductsBysubCategory
+);
+router.get(
+  "/category/:categoryName/subcategory/:subCategoryName/subsubcategory/:subSubCategoryName",
+  getProductsBysubsubCategory
 );
 
 router.put("/update/:productId", updateProduct);

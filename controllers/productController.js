@@ -365,6 +365,37 @@ const getProductsBysubCategory = async (req, res) => {
   }
 };
 
+const getProductsBysubsubCategory = async (req, res) => {
+  try {
+    const decodedCategoryName = decodeURIComponent(req.params.categoryName);
+    const decodedSubCategoryName = decodeURIComponent(
+      req.params.subCategoryName
+    );
+    const decodedSubSubCategoryName = decodeURIComponent(
+      req.params.subSubCategoryName
+    );
+
+    const products = await Product.find({
+      categoryName: decodedCategoryName,
+      subCategoryName: decodedSubCategoryName,
+      subSubCategoryName: decodedSubSubCategoryName,
+      active: true, // Only fetch active products
+      isdraft: false, // Only fetch products that are not drafts
+    });
+
+    if (!products.length) {
+      return res
+        .status(404)
+        .json({ error: "No products found for this subsubcategory" });
+    }
+
+    res.status(200).json(products);
+  } catch (error) {
+    console.error("Error fetching products by subsubcategory:", error.message);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
 // Fetch products by brand
 const getProductsByBrand = async (req, res) => {
   try {
@@ -395,6 +426,7 @@ module.exports = {
   getProductsByCategory,
   getProductsBysubCategory,
   getProductsByBrand,
+  getProductsBysubsubCategory,
 };
 
 /*
