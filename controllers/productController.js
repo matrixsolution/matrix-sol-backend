@@ -97,7 +97,7 @@ const createProduct = async (req, res) => {
     const productId = await generateProductId();
 
     // Split shortDescription and bulletPoints by commas
-    const shortDescriptionArray = shortDescription.split(",");
+    const shortDescriptionArray = shortDescription.split(/\r?\n/);
     const bulletPointsArray = bulletPoints.split(",");
 
     // Create new product
@@ -251,7 +251,7 @@ const updateProduct = async (req, res) => {
     }
 
     // Split shortDescription and bulletPoints by commas
-    const shortDescriptionArray = shortDescription.split(",");
+    const shortDescriptionArray = shortDescription.split(/\r?\n/);
     const bulletPointsArray = bulletPoints.split(",");
 
     // Calculate offerPrice if not provided
