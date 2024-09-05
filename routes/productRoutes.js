@@ -9,6 +9,7 @@ const {
   deleteProduct,
   getProductsByCategory,
   getProductsBysubCategory,
+  getProductsByBrand,
 } = require("../controllers/productController");
 
 const router = express.Router();
@@ -18,6 +19,8 @@ router.get("/all", getAllProducts);
 router.put("/toggle-active/:productId", toggleProductActiveState);
 router.get("/:productId", getProductById);
 router.get("/category/:categoryName", getProductsByCategory);
+router.get("/brand/:brand", getProductsByBrand);
+
 router.get(
   "/category/:categoryName/subcategory/:subCategoryName",
   getProductsBysubCategory

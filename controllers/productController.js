@@ -177,6 +177,7 @@ const getProductById = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
 // controllers/productController.js
 
 const updateProduct = async (req, res) => {
@@ -323,28 +324,39 @@ const deleteProduct = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+// Fetch products by category
 const getProductsByCategory = async (req, res) => {
   try {
-    const product = await Product.find({
+    const products = await Product.find({
       categoryName: req.params.categoryName,
+      active: true, // Only fetch active products
+      isdraft: false, // Only fetch products that are not drafts
     });
-    if (!product) {
-      return res.status(404).json({ error: "Product not found" });
+    if (!products.length) {
+      return res
+        .status(404)
+        .json({ error: "No products found for this category" });
     }
-    res.status(200).json(product);
+    res.status(200).json(products);
   } catch (error) {
-    console.error("Error fetching product by ID:", error.message);
+    console.error("Error fetching products by category:", error.message);
     res.status(500).json({ error: "Server error" });
   }
 };
+
+// Fetch products by category and subcategory
 const getProductsBysubCategory = async (req, res) => {
   try {
     const products = await Product.find({
       categoryName: req.params.categoryName,
       subCategoryName: req.params.subCategoryName,
+      active: true, // Only fetch active products
+      isdraft: false, // Only fetch products that are not drafts
     });
     if (!products.length) {
-      return res.status(404).json({ error: "No products found" });
+      return res
+        .status(404)
+        .json({ error: "No products found for this subcategory" });
     }
     res.status(200).json(products);
   } catch (error) {
@@ -352,6 +364,27 @@ const getProductsBysubCategory = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
+// Fetch products by brand
+const getProductsByBrand = async (req, res) => {
+  try {
+    const products = await Product.find({
+      brand: req.params.brand,
+      active: true, // Only fetch active products
+      isdraft: false, // Only fetch products that are not drafts
+    });
+    if (!products.length) {
+      return res
+        .status(404)
+        .json({ error: "No products found for this brand" });
+    }
+    res.status(200).json(products);
+  } catch (error) {
+    console.error("Error fetching products by brand:", error.message);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+
 module.exports = {
   createProduct,
   getAllProducts,
@@ -361,6 +394,7 @@ module.exports = {
   deleteProduct,
   getProductsByCategory,
   getProductsBysubCategory,
+  getProductsByBrand,
 };
 
 /*
