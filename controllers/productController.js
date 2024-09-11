@@ -324,13 +324,26 @@ const deleteProduct = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
+const decodeFromUrl = (str) => {
+  return decodeURIComponent(str)
+    .replace(/-slash-/g, "/") // Replace "-slash-" back to "/"
+    .replace(/-at-/g, "@") // Replace "-at-" back to "@"
+    .replace(/-and-/g, "&") // Replace "-and-" back to "&"
+    .replace(/-backslash-/g, "\\") // Replace "-backslash-" back to "\"
+    .replace(/-percent-/g, "%"); // Replace "-percent-" back to "%"
+};
+
 // Fetch products by category
 const getProductsByCategory = async (req, res) => {
   try {
+    const decodedCategoryName = decodeFromUrl(
+      decodeURIComponent(req.params.categoryName)
+    );
     const products = await Product.find({
-      categoryName: req.params.categoryName,
-      active: true, // Only fetch active products
-      isdraft: false, // Only fetch products that are not drafts
+      categoryName: decodedCategoryName,
+      active: true,
+      isdraft: false,
     });
     if (!products.length) {
       return res
@@ -347,11 +360,17 @@ const getProductsByCategory = async (req, res) => {
 // Fetch products by category and subcategory
 const getProductsBysubCategory = async (req, res) => {
   try {
+    const decodedCategoryName = decodeFromUrl(
+      decodeURIComponent(req.params.categoryName)
+    );
+    const decodedSubCategoryName = decodeFromUrl(
+      decodeURIComponent(req.params.subCategoryName)
+    );
     const products = await Product.find({
-      categoryName: req.params.categoryName,
-      subCategoryName: req.params.subCategoryName,
-      active: true, // Only fetch active products
-      isdraft: false, // Only fetch products that are not drafts
+      categoryName: decodedCategoryName,
+      subCategoryName: decodedSubCategoryName,
+      active: true,
+      isdraft: false,
     });
     if (!products.length) {
       return res
@@ -367,20 +386,22 @@ const getProductsBysubCategory = async (req, res) => {
 
 const getProductsBysubsubCategory = async (req, res) => {
   try {
-    const decodedCategoryName = decodeURIComponent(req.params.categoryName);
-    const decodedSubCategoryName = decodeURIComponent(
-      req.params.subCategoryName
+    const decodedCategoryName = decodeFromUrl(
+      decodeURIComponent(req.params.categoryName)
     );
-    const decodedSubSubCategoryName = decodeURIComponent(
-      req.params.subSubCategoryName
+    const decodedSubCategoryName = decodeFromUrl(
+      decodeURIComponent(req.params.subCategoryName)
+    );
+    const decodedSubSubCategoryName = decodeFromUrl(
+      decodeURIComponent(req.params.subSubCategoryName)
     );
 
     const products = await Product.find({
       categoryName: decodedCategoryName,
       subCategoryName: decodedSubCategoryName,
       subSubCategoryName: decodedSubSubCategoryName,
-      active: true, // Only fetch active products
-      isdraft: false, // Only fetch products that are not drafts
+      active: true,
+      isdraft: false,
     });
 
     if (!products.length) {
@@ -395,14 +416,14 @@ const getProductsBysubsubCategory = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
-
 // Fetch products by brand
 const getProductsByBrand = async (req, res) => {
   try {
+    const decodeBrand = decodeFromUrl(decodeURIComponent(req.params.brand));
     const products = await Product.find({
-      brand: req.params.brand,
-      active: true, // Only fetch active products
-      isdraft: false, // Only fetch products that are not drafts
+      brand: decodeBrand,
+      active: true,
+      isdraft: false,
     });
     if (!products.length) {
       return res
