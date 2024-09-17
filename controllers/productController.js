@@ -53,88 +53,92 @@ const createProduct = async (req, res) => {
     const {
       categoryName,
       subCategoryName,
-      title,
       subSubCategoryName,
-      shortDescription,
-      bulletPoints,
+      title,
       brand,
-      brandimage, // Extract brandImage from the request body
+      brandimage,
       modelNumber,
       price,
       offerPrice,
       discount,
+      inStockAvailable,
+      fullTitleDescription,
+      soldOutStock,
       fullDescription,
-      active, // Frontend should provide this
+      active,
       isdraft,
+      specifications,
     } = req.body;
 
     if (!req.files || Object.keys(req.files).length === 0) {
       return res.status(400).send("No files were uploaded.");
     }
-    if (!req.files || !req.files.productthumbnailimage) {
+
+    if (!req.files.productthumbnailimage) {
       return res
         .status(400)
         .json({ message: "Product thumbnail image is required" });
     }
 
     const thumbnailImageFile = req.files.productthumbnailimage;
-
     const productThumbnailImage = await uploadToCloudinary(
       thumbnailImageFile.data
     );
 
-    // Upload images to Cloudinary
     const imageUrls = [];
     const files = req.files.images;
     const fileArray = Array.isArray(files) ? files : [files];
-
     for (const file of fileArray) {
       const imageUrl = await uploadToCloudinary(file.data);
       imageUrls.push(imageUrl);
     }
 
-    // Create productId
     const productId = await generateProductId();
 
-    // Split shortDescription and bulletPoints by commas
-    const shortDescriptionArray = shortDescription.split(/\r?\n/);
-    const bulletPointsArray = bulletPoints.split(",");
+    const parsedSpecifications = specifications
+      ? JSON.parse(specifications)
+      : [];
 
-    // Create new product
+    const parsedFullTitleDescription = fullTitleDescription
+      ? fullTitleDescription.split(/\r?\n/)
+      : [];
+
     const newProduct = new Product({
       productId,
       categoryName,
       subCategoryName,
-      images: imageUrls,
-      productthumbnailimage: productThumbnailImage,
-      title,
       subSubCategoryName,
-      shortDescription: shortDescriptionArray,
-      bulletPoints: bulletPointsArray,
+      title,
       brand,
-      brandimage, // Include brandImage in the new product
+      brandimage,
       modelNumber,
       price,
-      offerPrice,
+      offerPrice: offerPrice,
       discount,
+      inStockAvailable,
+      fullTitleDescription: parsedFullTitleDescription,
+      soldOutStock,
       fullDescription,
-
-      active: active || false, // Ensure active defaults to false if not provided
+      specifications: parsedSpecifications,
+      images: imageUrls,
+      productthumbnailimage: productThumbnailImage,
+      active: active || false,
       isdraft: isdraft || false,
     });
 
     await newProduct.save();
+
     res
       .status(201)
-      .json({ message: "Product created successfully", newProduct });
+      .json({ message: "Product created successfully", product: newProduct });
   } catch (error) {
     if (error.code === 11000 && error.keyPattern.modelNumber) {
-      // This error code corresponds to a duplicate key error in MongoDB
       return res.status(400).json({
         message:
           "This model number already exists. Please use a different model number.",
       });
     }
+
     console.error("Error creating product:", error.message);
     res.status(500).json({ error: "Server error" });
   }
@@ -156,6 +160,11 @@ const toggleProductActiveState = async (req, res) => {
       return res.status(404).send("Product not found");
     }
     product.active = !product.active;
+    if (!product.active) {
+      product.inStockAvailable = 0;
+      product.soldOutStock = 0;
+    }
+
     await product.save();
     res.status(200).json(product);
   } catch (error) {
@@ -188,52 +197,57 @@ const updateProduct = async (req, res) => {
       subCategoryName,
       title,
       subSubCategoryName,
-      shortDescription,
-      bulletPoints,
       brand,
       brandimage,
       modelNumber,
       price,
       discount,
+      offerPrice,
       fullDescription,
+      fullTitleDescription,
+      specifications,
+      inStockAvailable,
+      soldOutStock,
+      removedImages,
     } = req.body;
 
-    // Initialize arrays for image URLs and the product thumbnail image URL
     let imageUrls = [];
     let productThumbnailImage = null;
 
-    // Fetch the existing product
     const product = await Product.findOne({ productId });
     if (!product) {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    // Handle new image uploads if present
-    if (req.files && req.files.images) {
-      // Delete existing images from Cloudinary
-      if (product.images.length > 0) {
-        for (const imageUrl of product.images) {
-          const publicId = imageUrl.split("/").slice(-1)[0].split(".")[0];
-          await cloudinary.uploader.destroy(publicId);
-        }
+    // Handle removal of existing images
+    const removedImagesArray = JSON.parse(removedImages || "[]");
+    if (removedImagesArray.length > 0) {
+      for (const imageUrl of removedImagesArray) {
+        const publicId = imageUrl.split("/").slice(-1)[0].split(".")[0];
+        await cloudinary.uploader.destroy(publicId); // Remove from Cloudinary
       }
 
-      // Upload new images to Cloudinary
+      // Remove the image URLs from the product's images field
+      product.images = product.images.filter(
+        (image) => !removedImagesArray.includes(image)
+      );
+    }
+
+    // Handle new images (append to the existing image URLs)
+    if (req.files && req.files.images) {
       const files = Array.isArray(req.files.images)
         ? req.files.images
         : [req.files.images];
       for (const file of files) {
         const imageUrl = await uploadToCloudinary(file.data);
-        imageUrls.push(imageUrl);
+        product.images.push(imageUrl); // Append new image URLs
       }
-    } else {
-      // No new images uploaded, keep existing ones
-      imageUrls = product.images;
     }
 
-    // Handle the thumbnail image
+    imageUrls = product.images; // Assign updated image array to imageUrls
+
+    // Handle the thumbnail update
     if (req.files && req.files.productthumbnailimage) {
-      // Delete existing thumbnail image from Cloudinary
       if (product.productthumbnailimage) {
         const publicId = product.productthumbnailimage
           .split("/")
@@ -241,47 +255,42 @@ const updateProduct = async (req, res) => {
           .split(".")[0];
         await cloudinary.uploader.destroy(publicId);
       }
-
-      // Upload new thumbnail image to Cloudinary
       const thumbnailImageFile = req.files.productthumbnailimage;
       productThumbnailImage = await uploadToCloudinary(thumbnailImageFile.data);
     } else {
-      // No new thumbnail image uploaded, keep existing one
-      productThumbnailImage = product.productthumbnailimage;
+      productThumbnailImage = product.productthumbnailimage; // Keep existing thumbnail if not updated
     }
 
-    // Split shortDescription and bulletPoints by commas
-    const shortDescriptionArray = shortDescription.split(/\r?\n/);
-    const bulletPointsArray = bulletPoints.split(",");
+    // Parse specifications and full title description
+    const parsedSpecifications = specifications
+      ? JSON.parse(specifications)
+      : [];
 
-    // Calculate offerPrice if not provided
-    let offerPrice = req.body.offerPrice;
-    if (!offerPrice && price && discount) {
-      offerPrice = (
-        parseFloat(price.replace(/,/g, "")) -
-        (parseFloat(price.replace(/,/g, "")) * parseFloat(discount)) / 100
-      ).toString();
-    }
+    const parsedFullTitleDescription = fullTitleDescription
+      ? fullTitleDescription.split(/\r?\n/)
+      : [];
 
-    // Update product in database
+    // Update product with new data
     const updatedProduct = await Product.findOneAndUpdate(
       { productId },
       {
         categoryName,
         subCategoryName,
-        title,
         subSubCategoryName,
-        shortDescription: shortDescriptionArray,
-        bulletPoints: bulletPointsArray,
+        title,
         brand,
         brandimage,
         modelNumber,
         price,
-        offerPrice, // Ensure this is passed correctly
+        offerPrice,
         discount,
+        inStockAvailable,
+        fullTitleDescription: parsedFullTitleDescription,
+        soldOutStock,
         fullDescription,
-        images: imageUrls, // Update images
-        productthumbnailimage: productThumbnailImage, // Update thumbnail
+        specifications: parsedSpecifications,
+        images: imageUrls,
+        productthumbnailimage: productThumbnailImage,
       },
       { new: true }
     );
@@ -342,7 +351,6 @@ const getProductsByCategory = async (req, res) => {
     );
     const products = await Product.find({
       categoryName: decodedCategoryName,
-      active: true,
       isdraft: false,
     });
     if (!products.length) {
@@ -369,7 +377,6 @@ const getProductsBysubCategory = async (req, res) => {
     const products = await Product.find({
       categoryName: decodedCategoryName,
       subCategoryName: decodedSubCategoryName,
-      active: true,
       isdraft: false,
     });
     if (!products.length) {
@@ -400,7 +407,6 @@ const getProductsBysubsubCategory = async (req, res) => {
       categoryName: decodedCategoryName,
       subCategoryName: decodedSubCategoryName,
       subSubCategoryName: decodedSubSubCategoryName,
-      active: true,
       isdraft: false,
     });
 
@@ -422,7 +428,6 @@ const getProductsByBrand = async (req, res) => {
     const decodeBrand = decodeFromUrl(decodeURIComponent(req.params.brand));
     const products = await Product.find({
       brand: decodeBrand,
-      active: true,
       isdraft: false,
     });
     if (!products.length) {

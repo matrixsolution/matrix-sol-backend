@@ -1,6 +1,15 @@
 // models/Product.js
 const mongoose = require("mongoose");
 
+const SpecificationSchema = new mongoose.Schema({
+  name: {
+    type: String,
+  },
+  details: {
+    type: [String],
+  },
+});
+
 const productSchema = new mongoose.Schema(
   {
     productId: {
@@ -10,12 +19,8 @@ const productSchema = new mongoose.Schema(
     },
     categoryName: { type: String, required: true },
     subCategoryName: String,
-    images: [String],
-    productthumbnailimage: { type: String, required: true },
-    title: { type: String, required: true },
     subSubCategoryName: String,
-    shortDescription: [String],
-    bulletPoints: [String],
+    title: { type: String, required: true },
     brand: {
       type: String,
       required: true,
@@ -26,10 +31,15 @@ const productSchema = new mongoose.Schema(
     },
     modelNumber: { type: String, required: true, unique: true },
     price: { type: String, required: true },
-    offerPrice: { type: String, default: "0" },
-
     discount: String,
+    offerPrice: { type: String, default: "0" },
+    inStockAvailable: { type: String },
+    fullTitleDescription: [String],
+    soldOutStock: { type: String },
     fullDescription: String,
+    specifications: [SpecificationSchema],
+    images: [String],
+    productthumbnailimage: { type: String, required: true },
     active: { type: Boolean, default: true },
     isdraft: { type: Boolean, default: false },
   },
